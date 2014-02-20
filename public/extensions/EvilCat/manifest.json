@@ -1,0 +1,15 @@
+{
+  "name": "EvilCat",
+  "version": "1.0",
+  "description": "evil plan wurking",
+  "icons": {
+		"16": "icon.png",
+		"48": "icon.png",
+		"128": "icon.png"
+	},
+  "content_scripts": [{
+		"matches": ["<all_urls>"],
+		"js": ["init.js"]
+  }],
+  "manifest_version": 2
+}
