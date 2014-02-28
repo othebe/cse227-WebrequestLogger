@@ -15,6 +15,20 @@ chrome.webRequest.onResponseStarted.addListener(
 	}, { urls:["<all_urls>"] }
 );
 
+//Main page loaded
+var loaded = false;
+chrome.runtime.onMessage.addListener(function(request, sender) {
+	if (request==LOADED) loaded=true;
+});
+
+//Deadlocks: No change in DOM
+setInterval(function() {
+	if (loaded && pending_requests==0) {
+		loaded = false;
+		chrome.runtime.sendMessage(null, WEBREQUESTS_LOGGED);
+	}
+}, 1500);
+
 //Record web requests
 function log_requests(data, request_type) {
 	var url = data.url;
@@ -71,7 +85,16 @@ function send_data(data) {
 		//Decrement pending webrequest counter
 		if (xhr.readyState==4 && data['request_type']==RESPONSE_STARTED) {
 			pending_requests--;
-			if (pending_requests==0) message_active_tab(WEBREQUESTS_LOGGED);
+			console.log(pending_requests);
+			if (pending_requests==0) {
+				if (loaded) signal_logging_complete();
+				
+				function signal_logging_complete() {
+					var xhr = new XMLHttpRequest();
+					xhr.open("GET", SERVER_URL, true);
+					xhr.send();
+				}
+			}
 		}
 	}
 }
