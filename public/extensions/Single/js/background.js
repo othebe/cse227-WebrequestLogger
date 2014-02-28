@@ -23,11 +23,19 @@ chrome.runtime.onMessage.addListener(function(request, sender) {
 
 //Deadlocks: No change in DOM
 setInterval(function() {
-	if (loaded && pending_requests==0) {
-		loaded = false;
+	if (loaded && pending_requests<=1) {
+		signal_logging_complete();
 		chrome.runtime.sendMessage(null, WEBREQUESTS_LOGGED);
 	}
 }, 1500);
+
+//Deadlocks: No change in DOM LONG
+var old_pr = 0;
+setInterval(function() {
+	if (pending_requests==old_pr)
+		signal_logging_complete();
+	else old_pr = pending_requests;
+}, 5000);
 
 //Record web requests
 function log_requests(data, request_type) {
@@ -88,15 +96,17 @@ function send_data(data) {
 			console.log(pending_requests);
 			if (pending_requests==0) {
 				if (loaded) signal_logging_complete();
-				
-				function signal_logging_complete() {
-					var xhr = new XMLHttpRequest();
-					xhr.open("GET", SERVER_URL, true);
-					xhr.send();
-				}
 			}
 		}
 	}
+}
+
+function signal_logging_complete() {
+	console.log("SEND");
+	var xhr = new XMLHttpRequest();
+	xhr.open("GET", SERVER_URL, true);
+	xhr.send();
+	loaded = false;
 }
 
 //Message active tab
