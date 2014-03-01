@@ -1,44 +1,56 @@
+//Full origin path
+var fullpath = '';
+
 //Pending requests
-var pending_requests = 0;
+var pending_requests = [];
 
 //Pre request
 chrome.webRequest.onBeforeRequest.addListener(
 	function(e) {
-		log_requests(e, BEFORE_REQUEST);
+		add_pending(e, BEFORE_REQUEST);
 	}, { urls:["<all_urls>"] }
 );
 
 //Post request
 chrome.webRequest.onResponseStarted.addListener(
 	function(e) {
-		log_requests(e, RESPONSE_STARTED);
+		add_pending(e, RESPONSE_STARTED);
 	}, { urls:["<all_urls>"] }
 );
 
 //Main page loaded
 var loaded = false;
 chrome.runtime.onMessage.addListener(function(request, sender) {
-	if (request==LOADED) loaded=true;
-});
-
-//Deadlocks: No change in DOM
-setInterval(function() {
-	if (loaded && pending_requests<=1) {
+	if (request==FLUSH) {
+		pending_requests = [];
 		signal_logging_complete();
-		chrome.runtime.sendMessage(null, WEBREQUESTS_LOGGED);
 	}
-}, 1500);
+	
+	if (request.loaded) {
+		fullpath = request.fullpath;
+		loaded = true;
+	}
+});
 
 //Deadlocks: No change in DOM LONG
 var old_pr = 0;
 setInterval(function() {
-	if (pending_requests==old_pr)
+	if (!loaded) return;
+	
+	if (pending_requests.length==old_pr && old_pr!=0) {
+		while (pending_requests.length > 0) {
+			var data = pending_requests.pop();
+			data['fullpath'] = fullpath;
+			send_data(data);
+		}
+		
 		signal_logging_complete();
-	else old_pr = pending_requests;
+	}
+	else old_pr = pending_requests.length;
 }, 5000);
 
 //Record web requests
-function log_requests(data, request_type) {
+function add_pending(data, request_type) {
 	var url = data.url;
 	var type = data.type;
 	var self_id = chrome.i18n.getMessage("@@extension_id");
@@ -49,9 +61,6 @@ function log_requests(data, request_type) {
 	if (data.url.indexOf(SERVER_URL)==0) return;
 	//Ignore web requests to localhost
 	if (data.url.toLowerCase().indexOf('localhost')>=0) return;
-	
-	//Increment pending webrequest counter
-	if (request_type==BEFORE_REQUEST) pending_requests++;
 	
 	chrome.management.getAll(function(extensions) {
 		for (ndx=0; ndx<extensions.length; ndx++) {
@@ -71,8 +80,7 @@ function log_requests(data, request_type) {
 					'collection': COLLECTION
 				};
 				
-				send_data(xhr_data);
-				break;
+				pending_requests.push(xhr_data);
 			}
 		}
 	});
@@ -89,20 +97,9 @@ function send_data(data) {
 	xhr.setRequestHeader("Content-type", "application/json");
 	
 	xhr.send(params);
-	xhr.onreadystatechange = function() {
-		//Decrement pending webrequest counter
-		if (xhr.readyState==4 && data['request_type']==RESPONSE_STARTED) {
-			pending_requests--;
-			console.log(pending_requests);
-			if (pending_requests==0) {
-				if (loaded) signal_logging_complete();
-			}
-		}
-	}
 }
 
 function signal_logging_complete() {
-	console.log("SEND");
 	var xhr = new XMLHttpRequest();
 	xhr.open("GET", SERVER_URL, true);
 	xhr.send();

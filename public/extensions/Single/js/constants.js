@@ -16,3 +16,5 @@ const RELOAD = 'RELOAD';
 const LOADED = 'LOADED';
 //Webrequest logged for current extension
 const WEBREQUESTS_LOGGED = 'WR_LOGGED';
+//Flush
+const FLUSH = 'FLUSH';
