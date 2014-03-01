@@ -1,0 +1,22 @@
+{
+  "name": "Baseline Logger",
+  "version": "1.0",
+  "description": "CSE227 Baseline webrequest logger",
+  "permissions": ["webRequest",
+	"management",
+	"<all_urls>"],
+  "icons": {
+		"16": "icon.png",
+		"48": "icon.png",
+		"128": "icon.png"
+	},
+  "content_scripts": [{
+		"matches": ["<all_urls>"],
+		"js": ["js/init.js", "js/constants.js"]
+  }],
+  "background": {
+		"matches": ["<all_urls>"],
+		"scripts": ["js/background.js", "js/constants.js"]
+	},
+  "manifest_version": 2
+}
